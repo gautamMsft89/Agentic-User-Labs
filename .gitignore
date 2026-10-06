@@ -5,4 +5,3 @@
 *.user
 *.suo
 appsettings.json
-!labs/lab-06.1-workiq/code/appsettings.json
