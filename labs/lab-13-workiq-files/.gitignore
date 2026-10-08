@@ -1,0 +1,5 @@
+code/appsettings.json
+code/appsettings.*.local.json
+**/bin/
+**/obj/
+*.graph-files.env
