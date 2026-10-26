@@ -1,0 +1,5 @@
+code/lab13.config.json
+code/appsettings.json
+code/appsettings.*.local.json
+code/bin/
+code/obj/

@@ -20,6 +20,7 @@ Hands-on labs and sample implementations for building, configuring, and extendin
 | 10. Migrate an Existing Digital Worker (planned) | An existing Digital Worker is migrated to the Agentic User model without disrupting its existing experience. | Create the new DW/AU; release the previous email identity; update existing logic to point to the new identity/person via deep link or GC | Implementation-dependent | Implementation-dependent |
 | [11. Send Progressive Updates](./labs/lab-11-progressive-updates/Readme.md) | Long-running work continues after the incoming request and reports visible progress. | Queue background work; edit one progress message; update a work-plan card; validate work beyond two minutes | 60 min | 30 min |
 | [12. Azure OpenAI Orchestrator](./labs/lab-12-azure-openai-orchestrator/Readme.md) | The agent streams Azure OpenAI responses in Teams. | Configure the model; connect Microsoft Learn MCP tools; stream responses and tool updates | Work in progress | Work in progress |
+| [13. Ask the Agent in Plain Language with WorkIQ](./labs/lab-13-workiq-natural-language/README.md) | The agent answers and acts on natural-language Teams requests using WorkIQ MCP tools as its own agentic user identity. | Configure AU and WorkIQ settings; let a model pick WorkIQ tools; confirm before posting to groups; optional ambient listening | 60 min | 30 min |
 
 # Pre requsites
 - [Microsoft dev-tunnel](./dependencies/dev-tunnel/README.md)

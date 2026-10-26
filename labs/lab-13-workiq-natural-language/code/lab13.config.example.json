@@ -1,0 +1,53 @@
+{
+  // Lab 13 settings template. Copy it, then replace every <...> value (README step 1):
+  //   Copy-Item lab13.config.example.json lab13.config.json
+  // lab13.config.json is git-ignored.
+
+  // ---------- Teams / agent user (Entra admin center) ----------
+  "AzureAd": {
+    // Entra > Overview > Tenant ID
+    "TenantId": "<tenant-id-guid>",
+    // Entra > App registrations > your blueprint > Application (client) ID
+    "ClientId": "<blueprint-client-id-guid>",
+    "ClientCredentials": [
+      {
+        "SourceType": "ClientSecret",
+        // Blueprint > Certificates & secrets > the secret's VALUE column (not "Secret ID")
+        "ClientSecret": "<blueprint-secret-value>"
+      }
+    ]
+  },
+  "WorkIQAgent": {
+    // Entra > Enterprise applications > your agent identity > Application ID
+    "AgentIdentityClientId": "<agent-identity-client-id-guid>",
+    // Entra > Users > the agent user (Otto) > Object ID  (not a client ID, not the email)
+    "AgentUserObjectId": "<agent-user-object-id-guid>"
+  },
+  "Host": {
+    // Your dev tunnel address; the blueprint messaging endpoint must be <TunnelUrl>/api/messages
+    "TunnelUrl": "https://<your-tunnel-host>"
+  },
+  // Local port the tunnel forwards to
+  "Urls": "http://localhost:3986",
+
+  // ---------- WorkIQ MCP (prefilled; change only if told to) ----------
+  "WorkIQ": {
+    "Endpoint": "https://workiq.svc.cloud.microsoft/mcp",
+    "Resource": "api://workiq.svc.cloud.microsoft",
+    "Scope": "api://workiq.svc.cloud.microsoft/WorkIQAgent.Ask"
+  },
+
+  // ---------- Model (any chat model with tool calling) ----------
+  "Model": {
+    // Foundry / Azure OpenAI resource endpoint + /openai/v1
+    "Endpoint": "https://<your-model-resource>.openai.azure.com/openai/v1",
+    // Foundry > Deployments > name
+    "Deployment": "<tool-calling-deployment-name>",
+    // Foundry / Azure OpenAI > Keys
+    "ApiKey": "<model-api-key>",
+    // Optional: "none" for reasoning models that reject tools with reasoning on; otherwise leave empty
+    "ReasoningEffort": ""
+  },
+
+  "Logging": { "LogLevel": { "Default": "Warning", "Microsoft.AspNetCore": "Warning" } }
+}
