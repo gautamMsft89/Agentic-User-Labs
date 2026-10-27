@@ -203,6 +203,35 @@ GET https://graph.microsoft.com/beta/applications/{agentIdentityBlueprintId}/mic
 | `[admit] dropped: <reason>` | Rejected by that check (tenant, recipient is not Otto, sender, empty text) | Fix what the reason names, for example the tenant or Otto's object ID in `lab13.config.json`. |
 | `[agent] Overheard → NO_REPLY` | The model chose to stay silent | Reword the message, or adjust "Overheard messages" in `SKILL.md` and restart. |
 | `[in] <other type> name=…` | A non-message activity arrived (for example a conversation update) | Usually nothing to do. Otto answers only `message` activities. |
+| `[card] to=… status=err …` | WorkIQ rejected the card post | Read the error; Otto retries once after `get_schema`. |
+| `[stream] failed: …` | 1:1 streaming isn't supported here | Nothing to do; Otto falls back to one normal reply. See "Streaming (1:1)". |
+
+### Adaptive Cards (via WorkIQ)
+
+Ask Otto for an answer "as an Adaptive Card". The model builds an Adaptive Card v1.5 and posts it itself with WorkIQ
+`create_entity`, as Otto, to the current chat, channel or thread (`SKILL.md` "Adaptive Cards"). The Teams SDK does not
+send it. The message body is a short HTML summary plus `<attachment id="c1">`, and that summary is the notification preview.
+Otto then replies `NO_REPLY`, so you see only the card.
+
+| Item | Detail |
+|---|---|
+| Purpose | Tests how Graph-posted cards appear in notifications: desktop toast, Activity feed, chat-list preview and mobile push |
+| Card type | Display-only: text, facts and `Action.OpenUrl`. No `Action.Submit`/`Action.Execute`, because Otto gets no callbacks from Graph-posted cards |
+| 1:1 chat | The bot conversation id is not a Graph chat id; Otto looks the chat up in `/me/chats` |
+| Console | `[card] to=<path> status=ok`, then `[agent] NO_REPLY (already posted via WorkIQ)`; on failure `status=err <first 200 chars>` |
+
+### Streaming (1:1)
+
+In a 1:1 chat Otto shows progress while WorkIQ works: "Working on it…" right away, then a short status for each WorkIQ
+tool call ("Searching mail…", "Reading Teams messages…", "Looking at files…", "Posting…"). Then the answer streams in and
+ends as **one** final message. `Program.cs` class `Progress`.
+
+| Item | Detail |
+|---|---|
+| Where | 1:1 only. In group chats and channels, and for overheard messages, Otto sends one normal reply without progress. |
+| Card posted (`NO_REPLY`) | The stream ends with "Done - see above." |
+| Limits | Teams web and desktop; iOS/mobile streaming is still rolling out. Teams ends a stream after 2 minutes, so if WorkIQ takes longer the answer comes as one normal message. If anything fails, Otto sends one normal reply. |
+| Console | Every step shows elapsed time and the Teams activity id: `[stream] start`, `[stream] status "<text>" #<seq> t=<s> id=<id>`, `[stream] chunk #<seq> chars=<n>`, `[stream] final chars=<n> id=<id>`. Fallback: `[stream] failed: http <status> <error> → normal reply`, `[stream] not confirmed …` or `[stream] past the 2-minute stream limit …`. |
 
 ---
 
@@ -219,6 +248,10 @@ The exact prompts and expected facts are in [scenarios.md](./scenarios.md) part 
 7. **Create the incident group and post a summary** — after you approve.
 8. **Ambient incident post** — two people discuss an ICM without @mentioning Otto; when one says "We need to create a
    post about this ICM in Aurora Incidents", Otto proposes a draft in the chat, you reply "yes", and Otto posts it (needs the ambient `PUT`).
+9. **Adaptive Card notifications** — "@Otto send me the Aurora status as an Adaptive Card" in 1:1, a group chat and a
+   channel; check the toast, Activity feed and mobile push.
+10. **Streaming (1:1)** — "summarize everything about the Aurora incident across mail, chats and files" in 1:1; watch
+   status updates and a single final answer.
 
 ---
 

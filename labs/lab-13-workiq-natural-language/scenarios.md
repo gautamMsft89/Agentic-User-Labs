@@ -73,6 +73,8 @@ Wait **15–30 minutes** after posting before Exercise 2 (search indexing). Exer
 | Taking actions | 7 |
 | Ambient listening (intent-based, confirm in the group before acting) | 8 |
 | 1:1 responses | 1, 2, 3 |
+| Adaptive Cards in notifications | 9 |
+| Streaming (1:1) | 10 |
 
 Send each prompt as written. In a group chat or channel, start the message with **@Otto** (pick Otto from the mention list).
 
@@ -175,6 +177,45 @@ because the post may already exist.
 
 Bonus: post `Otto, what WorkIQ tools do you have?` without @mentioning him. Otto answers directly, because the question is
 aimed at him and is read-only. Plain chat between Maya and Daniel still gets no reply.
+
+### 9. Adaptive Card notifications (1:1, `Aurora Planning` chat, `Aurora Incidents` channel)
+
+Use a second person as the **recipient**, with Teams minimized or open in another chat. In each of the three places, post:
+
+```text
+@Otto send me the Aurora status as an Adaptive Card
+```
+
+(In 1:1 no @mention is needed; the recipient is you, so check your own notifications.) In the group chat and the channel
+the card is posted for everyone in that conversation.
+
+| Check | Pass |
+|---|---|
+| In the conversation | One card from Otto with the Aurora facts (rollback cfg-1042 → cfg-1041 done, error rate 0.3%, SME Priya Nair). No extra text reply. |
+| Desktop toast | Shows **Otto** and the one-line summary, not "Sent a card" or empty text |
+| Activity feed / chat-list preview | Same summary text |
+| Mobile push | Same summary text |
+| Console | `[card] to=/chats/…/messages status=ok` (or `/teams/…/channels/…`), then `[agent] NO_REPLY (already posted via WorkIQ)` |
+
+Record which surfaces show the summary and which do not. That is the finding for "Adaptive Cards in Notifications".
+The card is display-only, so it has no buttons that call back to Otto.
+
+### 10. Streaming (1:1 chat)
+
+Post this slow, multi-source question in your 1:1 with Otto:
+
+```text
+Summarize everything about the Aurora incident across mail, chats and files
+```
+
+| Check | Pass |
+|---|---|
+| First status | "Working on it…" appears within about 1 second |
+| Status updates | Changes as Otto works, e.g. "Searching mail…", "Reading Teams messages…", "Looking at files…" |
+| Answer | Streams in, then ends as **one** final message (no duplicate) |
+| Console | `[stream] start`, `[stream] status "…" … id=<id>`, several `[stream] chunk …`, `[stream] final chars=<n> … id=<id>` |
+
+If the console shows `[stream] failed: …`, Otto fell back to one normal reply. Note the client (iOS streaming is still rolling out). If the console shows `past the 2-minute stream limit`, the WorkIQ work took over 2 minutes; the answer arrives as one normal message. In group chats and channels Otto doesn't stream; he sends one normal reply.
 
 ### Clean up
 

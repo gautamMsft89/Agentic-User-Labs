@@ -61,9 +61,10 @@ internal sealed class Agent(IConfiguration config, WorkIqConnection workIq)
     }
 
     // Returns null when nothing should be posted (an overheard message Otto chose not to act on).
-    internal async Task<string?> Handle(Request request, CancellationToken ct)
+    // status (optional) receives friendly progress text before each WorkIQ tool call.
+    internal async Task<string?> Handle(Request request, CancellationToken ct, Func<string, Task>? status = null)
     {
-        try { return await Run(request, ct); }
+        try { return await Run(request, status, ct); }
         catch (Exception error)
         {
             if (!request.Overheard) return "Sorry, something went wrong: " + error.Message;
@@ -72,7 +73,7 @@ internal sealed class Agent(IConfiguration config, WorkIqConnection workIq)
         }
     }
 
-    private async Task<string?> Run(Request request, CancellationToken ct)
+    private async Task<string?> Run(Request request, Func<string, Task>? status, CancellationToken ct)
     {
         ChatCompletionOptions options = new();
         foreach (Tool tool in await workIq.Catalog(ct))
@@ -103,18 +104,51 @@ internal sealed class Agent(IConfiguration config, WorkIqConnection workIq)
                 lock (turns) { turns.Add((userText, answer)); if (turns.Count > MaxHistory) turns.RemoveAt(0); }
                 if (!request.IsPersonal && !request.Overheard) handoffs[request.RequesterId] = new(request, answer, calls, DateTimeOffset.UtcNow);
                 else if (handoff is not null) lock (handoff.ToolCalls) handoff.ToolCalls.AddRange(calls.Select(c => "[done in personal chat] " + c));
-                if (request.Overheard && (answer.Length == 0 || answer == NoReply)) { Console.WriteLine("[agent] Overheard → NO_REPLY"); return null; }
+                if (answer == NoReply || (request.Overheard && answer.Length == 0))
+                {
+                    Console.WriteLine(request.Overheard ? "[agent] Overheard → NO_REPLY" : "[agent] NO_REPLY (already posted via WorkIQ)");
+                    return null;
+                }
                 return answer.Length > 0 ? answer : "(The model returned an empty answer.)";
             }
             messages.Add(new AssistantChatMessage(completion));
             foreach (ChatToolCall call in completion.ToolCalls)
             {
                 calls.Add(call.FunctionName + " " + call.FunctionArguments);
+                if (status is not null) await status(Status(call.FunctionName, call.FunctionArguments.ToString()));
                 using JsonDocument arguments = JsonDocument.Parse(call.FunctionArguments.ToString());
-                messages.Add(new ToolChatMessage(call.Id, Text(await workIq.Call(call.FunctionName, arguments.RootElement, ct))));
+                string result = Text(await workIq.Call(call.FunctionName, arguments.RootElement, ct));
+                messages.Add(new ToolChatMessage(call.Id, result));
+                // Diagnostic: show message posts made through WorkIQ (cards and HTML posts).
+                if (call.FunctionName == "create_entity" && arguments.RootElement.TryGetProperty("parentUrl", out JsonElement url)
+                    && url.GetString() is string path && (path.EndsWith("/messages") || path.EndsWith("/replies")))
+                {
+                    bool failed = result.StartsWith("[WorkIQ reported isError=true]") || !result.Contains("\"id\"");
+                    Console.WriteLine($"[{(arguments.RootElement.GetRawText().Contains("card.adaptive") ? "card" : "post")}] to={path} " +
+                        $"status={(failed ? "err " + result[..Math.Min(result.Length, 200)].ReplaceLineEndings(" ") : "ok")}");
+                }
             }
         }
         return $"Sorry, I stopped after {MaxTurns} steps without a final answer.";
+    }
+
+    // Friendly progress text for a WorkIQ tool call, from the tool name and the paths in its arguments.
+    private static string Status(string tool, string arguments)
+    {
+        string a = arguments.ToLowerInvariant();
+        bool Has(params string[] parts) => parts.Any(a.Contains);
+        return tool switch
+        {
+            "create_entity" => "Posting…",
+            "update_entity" or "do_action" => "Updating…",
+            "delete_entity" => "Removing…",
+            _ when Has("/chats", "/channels", "/teams") => "Reading Teams messages…",
+            _ when Has("/messages", "/mailfolders") => "Searching mail…",
+            _ when Has("/drive", "/sites", "/files") => "Looking at files…",
+            _ when Has("/events", "/calendar") => "Checking the calendar…",
+            _ when Has("/users", "/people", "/contacts") => "Looking up people…",
+            _ => "Looking things up…",
+        };
     }
 
     private static string Context(Request r, Handoff? handoff)
@@ -124,6 +158,9 @@ internal sealed class Agent(IConfiguration config, WorkIqConnection workIq)
         text.AppendLine($"- Requester: {r.RequesterName} (userId {r.RequesterId}). You are the agent user; the requester is a different person.");
         text.AppendLine($"- Conversation type: {r.ConversationType}; conversation id: {r.ConversationId}");
         if (r.TeamId is not null) text.AppendLine($"- Team id: {r.TeamId}; channel id: {r.ChannelId}");
+        if (r.ConversationId.Split(";messageid=") is [_, string root]) text.AppendLine($"- Channel thread root message id: {root}");
+        if (r.IsPersonal) text.AppendLine($"- This 1:1 conversation id is a bot id, NOT a Graph chat id. To post into this 1:1 chat via WorkIQ, find it in /me/chats (chatType oneOnOne) whose members include userId {r.RequesterId}.");
+        else if (r.TeamId is null) text.AppendLine("- This group chat's conversation id is also its Graph chat id.");
         if (r.MessageId is not null) text.AppendLine($"- Current message id: {r.MessageId}");
         if (r.Overheard)
             text.AppendLine($"- OVERHEARD: this message was NOT addressed to you (no @mention). Follow the skill section 'Overheard messages'; reply exactly {NoReply} to stay silent.");

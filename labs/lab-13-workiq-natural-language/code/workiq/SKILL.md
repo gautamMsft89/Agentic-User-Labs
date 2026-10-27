@@ -106,3 +106,22 @@ are shown differently: Teams formats them only when the body is HTML.
   `<b>ICM {id} — {title} ({sev})</b><br><br><b>Impact:</b> …<br><b>Mitigation:</b> …<br><b>Suspected cause:</b> …<br><b>Owner:</b> … · <b>SME:</b> …<br><b>Next steps:</b><ul><li>…</li><li>…</li></ul>`
 
   With no ICM, start with `<b>{title}</b>` instead. Show the draft in your proposal as plain lines, not HTML.
+
+## Adaptive Cards
+
+- When the requester wants the answer as a card (judge the intent), the card IS your reply
+  in this same conversation: post it directly, no confirmation needed.
+- Build an Adaptive Card v1.5 and post it with `create_entity` to:
+  group chat or 1:1 `/chats/{chatId}/messages` (for 1:1 find the chat id as the request
+  facts say); channel `/teams/{teamId}/channels/{channelId}/messages`, or
+  `.../messages/{rootId}/replies` when the request came from a thread.
+- jsonBody, exactly this shape (the card JSON is a STRING):
+  `{"body":{"contentType":"html","content":"<summary> <attachment id=\"c1\"></attachment>"},
+  "attachments":[{"id":"c1","contentType":"application/vnd.microsoft.card.adaptive","content":"<card JSON>"}]}`
+- `<summary>` is the notification preview: one meaningful plain sentence (e.g. "Aurora
+  status: rollback done, error rate 0.3%").
+- Display-only: TextBlock, FactSet, ColumnSet, Container, and `Action.OpenUrl` only.
+  Never `Action.Submit` or `Action.Execute`; you receive no callbacks from these cards.
+- On a 400, call `get_schema` for that path and retry once with a corrected body.
+- After a successful post, reply exactly `NO_REPLY` (the card is the answer). On failure,
+  say briefly in text that the card could not be posted and why.
