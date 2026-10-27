@@ -1,0 +1,6 @@
+{
+  "id": "04f1759f-adc8-4281-aea7-20d0ceece9dc",
+  "schemaVersion": "0.1.0-preview",
+  "agentIdentityBlueprintId": "<BLUEPRINT_APP_ID>",
+  "communicationProtocol": "activityProtocol"
+}

@@ -3,3 +3,4 @@ code/appsettings.json
 code/appsettings.*.local.json
 code/bin/
 code/obj/
+manifest/out/

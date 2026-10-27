@@ -1,0 +1,32 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/vdevPreview/MicrosoftTeams.schema.json",
+  "id": "b4b1ab53-686e-43a6-a74e-6147710b7305",
+  "name": {
+    "short": "Otto",
+    "full": "Otto – WorkIQ agent"
+  },
+  "description": {
+    "short": "Ask Otto in plain language about your mail, chats, meetings and files.",
+    "full": "Otto is an agent user that answers plain-language questions about Microsoft 365 work data through WorkIQ, signed in as his own identity. Chat with him 1:1 or @mention him in group chats and channels. He can summarize threads, start group chats and post summaries after you confirm, post Adaptive Cards, stream progress in 1:1 chats, and listen to group chats and offer to help with incidents (he always asks before acting)."
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
+  },
+  "accentColor": "#4F6BED",
+  "version": "1.0.0",
+  "manifestVersion": "devPreview",
+  "developer": {
+    "name": "Agentic User Labs",
+    "mpnId": "",
+    "websiteUrl": "https://github.com/osheenkhare/Agentic-User-Labs",
+    "privacyUrl": "https://go.microsoft.com/fwlink/?LinkId=518028",
+    "termsOfUseUrl": "https://shares.datatransfer.microsoft.com/assets/Microsoft_Terms_of_Use.html"
+  },
+  "agenticUserTemplates": [
+    {
+      "id": "04f1759f-adc8-4281-aea7-20d0ceece9dc",
+      "file": "agenticUserTemplateManifest.json"
+    }
+  ]
+}

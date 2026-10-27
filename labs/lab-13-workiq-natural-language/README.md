@@ -233,6 +233,68 @@ ends as **one** final message. `Program.cs` class `Progress`.
 | Limits | Teams web and desktop; iOS/mobile streaming is still rolling out. Teams ends a stream after 2 minutes, so if WorkIQ takes longer the answer comes as one normal message. If anything fails, Otto sends one normal reply. |
 | Console | Every step shows elapsed time and the Teams activity id: `[stream] start`, `[stream] status "<text>" #<seq> t=<s> id=<id>`, `[stream] chunk #<seq> chars=<n>`, `[stream] final chars=<n> id=<id>`. Fallback: `[stream] failed: http <status> <error> → normal reply`, `[stream] not confirmed …` or `[stream] past the 2-minute stream limit …`. |
 
+### Create Otto from the app package (manifest) and add it to Teams
+
+Optional. Instead of creating Otto by hand (Lab 1), publish the blueprint as an Agent 365 app and **hire** Otto from
+it. Each hire creates a **new** agent identity and agent user, so you then point this lab at the new ids.
+
+**1. Package.** `manifest/` contains:
+
+| File | Purpose |
+|---|---|
+| `manifest.json` | Teams devPreview app manifest; `agenticUserTemplates` points to the template below |
+| `agenticUserTemplateManifest.json` | `agentIdentityBlueprintId` = `<BLUEPRINT_APP_ID>` placeholder; `communicationProtocol` = `activityProtocol` |
+| `color.png`, `outline.png` | Icons, 192×192 and 32×32 |
+| `build-package.ps1` | Validates the JSON and icons, writes the zip |
+
+```powershell
+.\manifest\build-package.ps1                          # blueprint = AzureAd:ClientId from code\lab13.config.json
+.\manifest\build-package.ps1 -BlueprintAppId <guid>   # or pass it
+```
+
+Output: `manifest\out\otto-lab13.zip` (4 files at the zip root). The real blueprint id goes into the zip only;
+`manifest/out/` is git-ignored.
+
+**2. Upload, hire, wire up.**
+
+| # | Step | Where / how |
+|---|---|---|
+| 1 | Upload the zip (Global Admin) | [admin.microsoft.com](https://admin.microsoft.com) → **Agents** → **All agents** → **Upload custom agent**. Needs a Frontier / Agent 365 preview tenant; the upload fails in other tenants. Otto appears after 5–10 min. |
+| 2 | Create an instance (hire) | **Agents** → **All agents** (Agent Registry) → **Otto** → **Create instance**: manager, license, customize, review. Creating the agent user can take several minutes. |
+| 3 | Find the new agent identity | `GET https://graph.microsoft.com/beta/servicePrincipals/microsoft.graph.agentIdentity?$filter=agentIdentityBlueprintId eq '<BLUEPRINT_APP_ID>'` → `id` (for agent identities `appId` = `id`) |
+| 4 | Find the new agent user | `GET https://graph.microsoft.com/beta/users/microsoft.graph.agentUser?$filter=identityParentId eq '<AGENT_IDENTITY_ID>'` → `id` |
+| 5 | Grant consent for the new identity | Two `POST /v1.0/oauth2PermissionGrants` (body below): Teams messaging `AgentData.ReadWrite` and WorkIQ `WorkIQAgent.Ask` |
+| 6 | Update `code\lab13.config.json` | `WorkIQAgent:AgentIdentityClientId` = step 3 id, `WorkIQAgent:AgentUserObjectId` = step 4 id |
+| 7 | Check the endpoint | Blueprint messaging endpoint = `<tunnel>/api/messages` ([Lab 2](../lab-02-make-agent-respond/Readme.md)) |
+| 8 | Run | `devtunnel host <tunnel-id>`, then `dotnet run` |
+| 9 | Add Otto to Teams | Search Otto's UPN in Teams, start a 1:1 chat, then add him to group chats or teams |
+
+Consent body for step 5 (once per resource):
+
+```json
+POST https://graph.microsoft.com/v1.0/oauth2PermissionGrants
+{
+  "clientId": "<AGENT_IDENTITY_ID>",
+  "consentType": "AllPrincipals",
+  "resourceId": "<RESOURCE_SP_OBJECT_ID>",
+  "scope": "AgentData.ReadWrite"
+}
+```
+
+`resourceId` is the resource's service principal **object id**, which differs per tenant. Look it up:
+
+| Scope | Lookup |
+|---|---|
+| `AgentData.ReadWrite` | `GET /v1.0/servicePrincipals?$filter=appId eq '5a807f24-c9de-44ee-a3a7-329e88a00ffc'&$select=id` |
+| `WorkIQAgent.Ask` | `GET /v1.0/servicePrincipals?$filter=servicePrincipalNames/any(n:n eq 'api://workiq.svc.cloud.microsoft')&$select=id` |
+
+| Problem | Check |
+|---|---|
+| Upload fails | Tenant isn't Frontier / Agent 365 preview; zip files not at the root; not Global Admin |
+| `[admit] dropped: recipient is not Otto` | Config still has the old identity / agent user ids; repeat steps 3–6 and restart |
+| No `[in]` line at all | Tunnel not hosted or endpoint wrong (steps 7–8), or the agent user was made by hand instead of hired from this package's blueprint |
+| `AADSTS65001` / WorkIQ 401/403 | Consent (step 5) or license missing for the new identity / agent user |
+
 ---
 
 ## 5. Exercises
